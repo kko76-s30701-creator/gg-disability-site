@@ -5,7 +5,7 @@ import requests
 import pandas as pd
 import streamlit as st
 from xml.etree import ElementTree as ET
-st.text(response.text[:1000])  # 처음 1000글자만 출력
+
 
 # ==========================
 # 2️⃣ API 설정
@@ -59,3 +59,6 @@ if not df.empty:
     if search_name:
         filtered = df[df["복지관명"].str.contains(search_name)]
         st.dataframe(filtered)
+        st.text(response.text[:1000])  # 처음 1000글자만 출력
+
+
