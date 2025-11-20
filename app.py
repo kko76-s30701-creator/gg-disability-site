@@ -1,55 +1,60 @@
+# ==========================
+# 1️⃣ 라이브러리 불러오기
+# ==========================
 import requests
 import pandas as pd
 import streamlit as st
+import xml.etree.ElementTree as ET
 
 # ==========================
-# 1️⃣ API 설정
+# 2️⃣ API 설정
 # ==========================
 API_KEY = "c9955392cc82450eb32d33c996ad1a9a"
 BASE_URL = "https://openapi.gg.go.kr/Ggregistdspsntypeage"
 
 params = {
     "KEY": API_KEY,
-    "Type": "json",
+    "Type": "xml",
     "pIndex": 1,
-    "pSize": 100  # 최대 100개
+    "pSize": 100
 }
 
 # ==========================
-# 2️⃣ 데이터 가져오기
+# 3️⃣ API 요청 및 XML 파싱
 # ==========================
 response = requests.get(BASE_URL, params=params)
 if response.status_code != 200:
     st.error(f"❌ API 요청 실패: {response.status_code}")
-    df = pd.DataFrame()
 else:
-    data = response.json()
     try:
-        items = data["Ggregistdspsntypeage"][1]["row"]
+        root = ET.fromstring(response.content)
+        items = []
+        # XML 구조에 맞춰 'row' 요소 찾아서 리스트로 변환
+        for row in root.findall(".//row"):
+            item = {}
+            for child in row:
+                item[child.tag] = child.text
+            items.append(item)
         df = pd.DataFrame(items)
     except Exception as e:
-        st.error("⚠️ 데이터 구조가 예상과 다릅니다.")
+        st.error(f"⚠️ XML 파싱 실패: {e}")
         df = pd.DataFrame()
 
 # ==========================
-# 3️⃣ Streamlit 앱 구성
+# 4️⃣ Streamlit 웹페이지 구성
 # ==========================
-st.title("경기도 장애인 복지관 현황")
+st.title("경기도 장애인 복지관 현황 (자동 업데이트)")
+
 st.write("✅ 최신 데이터가 자동으로 표시됩니다.")
 
 if not df.empty:
-    # 전체 데이터
+    # 전체 데이터 보기
     st.subheader("전체 데이터")
     st.dataframe(df)
 
-    # 복지관 이름 검색
-    st.subheader("복지관 이름으로 검색")
-    search_name = st.text_input("복지관 이름 입력")
+    # 사업장 이름 기준 검색
+    st.subheader("사업장 이름 검색")
+    search_name = st.text_input("검색어 입력 (사업장 이름)")
     if search_name:
-        filtered = df[df["BIZPLC_NM"].str.contains(search_name)]
+        filtered = df[df["BIZPLC_NM"].str.contains(search_name, na=False)]
         st.dataframe(filtered)
-
-    # 장애유형 선택
-    st.subheader("장애유형별 검색")
-    obstacle_type = st.selectbox("장애유형 선택", df['OBSTCL_TYPE'].unique())
-    st.dataframe(df[df['OBSTCL_TYPE'] == obstacle_type])
