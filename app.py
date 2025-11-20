@@ -32,25 +32,27 @@ except Exception as e:
     st.stop()
 
 # ==========================
-# 3️⃣ 데이터프레임 생성
-# ==========================
-data = []
-for r in rows:
-    row_dict = {
-        "기관명": r.findtext("BIZPLC_NM", default=""),
-        "주소": r.findtext("REFINE_ROADNM_ADDR", default=""),
-        "전화번호": r.findtext("ORG_TELNO", default=""),
-        "대표자명": r.findtext("ORG_RPRSNTV_NM", default=""),
-        "설립일": r.findtext("ESTB_DE", default=""),
-        "운영기관": r.findtext("OPERT_INSTT_NM", default="")
-    }
-    data.append(row_dict)
+ # 3️⃣ 필요한 컬럼만 선택 및 한글명으로 변경
+        # ==========================
+        df = df[[
+            "BSN_STATE_NM",
+            "LOCPLC_AR",
+            "ENTRNC_PSN_CAPA",
+            "QUALFCTN_POSESN_PSN_CNT",
+            "TOT_PSN_CNT"
+        ]]
+        df.rename(columns={
+            "BSN_STATE_NM": "영업상태명",
+            "LOCPLC_AR": "소재지면적(㎡)",
+            "ENTRNC_PSN_CAPA": "입소정원(명)",
+            "QUALFCTN_POSESN_PSN_CNT": "자격소유인원수(명)",
+            "TOT_PSN_CNT": "총인원수(명)"
+        }, inplace=True)
+        
+    except Exception as e:
+        st.error(f"⚠️ 데이터 처리 중 오류 발생: {e}")
+        df = pd.DataFrame()
 
-df = pd.DataFrame(data)
-
-if df.empty:
-    st.warning("⚠️ API에서 데이터가 없습니다.")
-    st.stop()
 
 # ==========================
 # 4️⃣ 검색 기능
