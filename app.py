@@ -1,69 +1,69 @@
+import streamlit as st
 import requests
 import pandas as pd
-import streamlit as st
 import xml.etree.ElementTree as ET
 
 st.set_page_config(page_title="경기도 장애인 복지관 현황", layout="wide")
-st.title("경기도 장애인 복지관 현황 (실시간 업데이트)")
+
+st.title("경기도 장애인 복지관 현황 🌟")
+st.markdown("경기도 내 장애인 복지관 정보를 확인하고, 검색할 수 있습니다.")
 
 # ==========================
-# 1️⃣ API 설정
+# 1️⃣ API 호출
 # ==========================
 API_KEY = "c9955392cc82450eb32d33c996ad1a9a"
-BASE_URL = "https://ggapi.gg.go.kr/GgDisabilityWelfareFacility"
+URL = f"https://openapi.gg.go.kr/DisablePersonCmwelfct?KEY={API_KEY}&Type=xml&pIndex=1&pSize=1000"
 
-params = {
-    "KEY": API_KEY,
-    "Type": "xml",
-    "pIndex": 1,
-    "pSize": 1000
-}
-
-# ==========================
-# 2️⃣ API 요청
-# ==========================
 try:
-    response = requests.get(BASE_URL, params=params)
+    response = requests.get(URL)
     response.raise_for_status()
 except Exception as e:
-    st.error(f"❌ API 요청 실패: {e}")
+    st.error(f"API 호출 실패: {e}")
     st.stop()
 
 # ==========================
-# 3️⃣ XML 파싱
+# 2️⃣ XML 파싱
 # ==========================
 try:
     root = ET.fromstring(response.content)
     rows = root.findall(".//row")
-
-    data = []
-    for r in rows:
-        data.append({
-            "복지관명": r.findtext("BIZPLC_NM", default=""),
-            "주소": r.findtext("SITEWHL_ADDR", default=""),
-            "전화번호": r.findtext("TELNO", default=""),
-            "시설구분": r.findtext("FCLTY_SE", default=""),
-            "운영상태": r.findtext("OP_STTUS", default="")
-        })
-
-    df = pd.DataFrame(data)
-
-    if df.empty:
-        st.warning("⚠️ 데이터가 없습니다.")
-    else:
-        st.subheader("전체 복지관 현황")
-        st.dataframe(df, use_container_width=True)
-
-        st.subheader("복지관 검색")
-        keyword = st.text_input("복지관 이름 입력 (부분 검색 가능)")
-        if keyword:
-            filtered = df[df["복지관명"].str.contains(keyword, na=False)]
-            if filtered.empty:
-                st.info("검색 결과가 없습니다.")
-            else:
-                st.dataframe(filtered, use_container_width=True)
-
-except ET.ParseError:
-    st.error("⚠️ XML 데이터 파싱 중 오류 발생")
 except Exception as e:
-    st.error(f"⚠️ 데이터 처리 중 오류 발생: {e}")
+    st.error(f"XML 파싱 오류: {e}")
+    st.stop()
+
+# ==========================
+# 3️⃣ 데이터프레임 생성
+# ==========================
+data = []
+for r in rows:
+    row_dict = {
+        "기관명": r.findtext("BIZPLC_NM", default=""),
+        "주소": r.findtext("REFINE_ROADNM_ADDR", default=""),
+        "전화번호": r.findtext("ORG_TELNO", default=""),
+        "대표자명": r.findtext("ORG_RPRSNTV_NM", default=""),
+        "설립일": r.findtext("ESTB_DE", default=""),
+        "운영기관": r.findtext("OPERT_INSTT_NM", default="")
+    }
+    data.append(row_dict)
+
+df = pd.DataFrame(data)
+
+if df.empty:
+    st.warning("⚠️ API에서 데이터가 없습니다.")
+    st.stop()
+
+# ==========================
+# 4️⃣ 검색 기능
+# ==========================
+search = st.text_input("복지관 이름 검색")
+if search:
+    filtered_df = df[df["기관명"].str.contains(search, case=False, na=False)]
+else:
+    filtered_df = df
+
+st.write(f"총 {len(filtered_df)}개 기관이 검색되었습니다.")
+
+# ==========================
+# 5️⃣ 테이블 표시
+# ==========================
+st.dataframe(filtered_df.reset_index(drop=True))
