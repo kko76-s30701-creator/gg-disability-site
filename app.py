@@ -2,47 +2,54 @@ import requests
 import pandas as pd
 import streamlit as st
 
-# -----------------------------
-# 1) 기본 설정
-# -----------------------------
-st.title("경기도 장애인 복지관 현황")
-st.write("이 앱은 경기도 공공데이터 API에서 정보를 받아와 실시간으로 업데이트됩니다.")
+# ==========================
+# 1️⃣ API 설정
+# ==========================
+API_KEY = "c9955392cc82450eb32d33c996ad1a9a"
+BASE_URL = "https://openapi.gg.go.kr/Ggregistdspsntypeage"
 
-API_KEY = "c9955392cc82450eb32d33c996ad1a9a"   # 당신의 인증키
-API_URL = f"https://openapi.gg.go.kr/OldPeopleCenter?KEY={API_KEY}&Type=json&pIndex=1&pSize=200"
+params = {
+    "KEY": API_KEY,
+    "Type": "json",
+    "pIndex": 1,
+    "pSize": 100  # 최대 100개
+}
 
-# -----------------------------
-# 2) API 요청
-# -----------------------------
-def load_data():
-    response = requests.get(API_URL)
-
-    if response.status_code != 200:
-        st.error("API 요청 실패. 인증키 또는 URL을 확인하세요.")
-        return None
-
+# ==========================
+# 2️⃣ 데이터 가져오기
+# ==========================
+response = requests.get(BASE_URL, params=params)
+if response.status_code != 200:
+    st.error(f"❌ API 요청 실패: {response.status_code}")
+    df = pd.DataFrame()
+else:
     data = response.json()
-
-    # JSON 구조 확인 후 실제 데이터 테이블 꺼내기
     try:
-        rows = data["OldPeopleCenter"][1]["row"]
-        df = pd.DataFrame(rows)
-        return df
-    except:
-        st.error("API 데이터 구조가 예상과 다릅니다.")
-        return None
+        items = data["Ggregistdspsntypeage"][1]["row"]
+        df = pd.DataFrame(items)
+    except Exception as e:
+        st.error("⚠️ 데이터 구조가 예상과 다릅니다.")
+        df = pd.DataFrame()
 
-# -----------------------------
-# 3) 데이터 불러오기 및 표시
-# -----------------------------
-df = load_data()
+# ==========================
+# 3️⃣ Streamlit 앱 구성
+# ==========================
+st.title("경기도 장애인 복지관 현황")
+st.write("✅ 최신 데이터가 자동으로 표시됩니다.")
 
-if df is not None:
-    st.success("데이터 불러오기 성공!")
+if not df.empty:
+    # 전체 데이터
+    st.subheader("전체 데이터")
     st.dataframe(df)
 
-    # 검색 기능
-    name = st.text_input("🔍 복지관 이름 검색")
+    # 복지관 이름 검색
+    st.subheader("복지관 이름으로 검색")
+    search_name = st.text_input("복지관 이름 입력")
+    if search_name:
+        filtered = df[df["BIZPLC_NM"].str.contains(search_name)]
+        st.dataframe(filtered)
 
-    if name:
-        filtered = df[df["BIZPLC_NM"].str.conta_]()]()
+    # 장애유형 선택
+    st.subheader("장애유형별 검색")
+    obstacle_type = st.selectbox("장애유형 선택", df['OBSTCL_TYPE'].unique())
+    st.dataframe(df[df['OBSTCL_TYPE'] == obstacle_type])
